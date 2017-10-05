@@ -1,8 +1,7 @@
 (DEFUN Round ( gameState)
 	( COND
 		( ( <= 2 (length gameState)) ;meaning no round items created
-			();generate dominos and create roundstate
-			(playRound gameState))
+			(playRound (generateRound gameState )))
 		(T 
 			(playRound gameState))
 	)
@@ -13,7 +12,8 @@
 		(( =  0 (length (getStock gameState)) )
 			(print "Round Ended"))  ;;should be returning a list of scores
 		(T  
-			() );round continues
+			() );round continues Impldment game logic now
+			;generate the engine first
 	)
 )
 
@@ -31,44 +31,121 @@
 	)
 )
 
+(DEFUN displayRoundState(gameState)
+		(terpri)
+		(write-line "----------------------------------------------------------")
+		(write-line "Current Layout:")
+		(princ (getLayout gameState))
+		(terpri)
+		(terpri)
+		(write-line "Current Stock: ")
+		(princ (getStock gameState))
+		(terpri)
+		(write-line "----------------------------------------------------------")
+		(terpri)
+
+)
+
+(DEFUN getHumanMove(gameState)
+	(terpri)
+	(princ "Human Hand: ")
+	(print(getHumanHand gameState))
+	(terpri)
+	(terpri)
+	(write-line "Please enter the domino you'd like to play enclosed in ( ) with side (L/R) as the first element. E.g. (L 1 6):: ")
+	( LET* (
+			(move (read))
+		)
+		( COND
+			((listp move) 
+				( COND(
+					(OR (eq 'L (first move) ) (eq 'R (first move)))
+					(LET*(
+						(hand (getHumanHand gameState))
+						(layout (getLayout gameState))
+					)
+					( COND(
+							(position (rest move ) hand :test #'equal)
+							(terpri)
+							(write-line "You have the domino in hand!")
+							
+						)
+						(T 
+							(terpri)
+							(write-line "You don't have that domino. Please select a domino in hand!")
+							(getHumanMove gameState)) )
+					;validate the move
+					;check if is in hand
+					;check if placable
+					))
+					(T 
+						(terpri)
+						(write-line "Plese select a valid side!")
+						(getHumanMove gameState)
+					)
+				)
+			)
+			(T 
+				(terpri)
+				(write-line "Invalid move. Please follow the input syntax!!")
+				(getHumanMove gameState)
+			)
+		)
+	)
+)
+
+(DEFUN validateMove (move layout)
+	( COND (
+		(= 'L (first move))
+		(
+			;left stuff
+		) 
+		)
+		(T 
+			(
+				;right stuff
+			))
+	)
+)
+
 (DEFUN getTournamentScore(gameState)
-	( getIthElement 1 gameState )
+	( elt gameState 0)
 )
 
 (DEFUN getRoundNo(gameState)
-	( getIthElement 2 gameState )
+	( elt gameState 1 )
 )
 
 (DEFUN getComputerHand(gameState)
-	 ( getIthElement 3 gameState )
+	 ( elt gameState 2 )
 )
 
 (DEFUN getComputerScore(gameState)
-	( getIthElement 4 gameState )
+	( elt gameState 3 )
 )
 
 (DEFUN getHumanHand(gameState)
-	( getIthElement 5 gameState )
+	( elt gameState 4 )
 )
 
 (DEFUN getHumanScore(gameState)
-	( getIthElement 6 gameState )
+	( elt gameState 5 )
 )
 
 (DEFUN getLayout(gameState)
-	( getIthElement 7 gameState )
+	( elt gameState 6)
 )
 
 (DEFUN getStock(gameState)
-	( getIthElement 8 gameState )
+	( elt gameState 7 )
 )
 
 (DEFUN getPlayerPassed(gameState)
-	( getIthElement 9 gameState )
+	( elt gameState 8 )
 )
 
 (DEFUN getTurn(gameState)
-	( getIthElement 10 gameState )
+	( elt gameState 9 )
 )
 
 
@@ -101,16 +178,6 @@
 	)
 )
 
-(DEFUN getIthElement(i listA)
-	( COND
-		((< i 1)
-			())
-		((= i 1) 
-			(first listA))
-		(T
-			(getIthElement (- i 1) (rest listA)))
-	)
-)
 
 (DEFUN getNElementsFromFront(n listA)
 	( COND
@@ -150,7 +217,7 @@
 			(LET* 
 				((x (random (length dominos))))
 				( CONS 
-					(getIthElement (+ x 1) dominos) 
+					(elt dominos x) 
 					(shuffleDominos 
 						(removeIthElement (+ x 1) dominos)) 
 				))
@@ -159,9 +226,11 @@
 )
 
 ;(print ( shuffleDominos  ( generateAllDominos(generateNums 0 6)) ))
-
-(print (generateRound '()))
-
+;(Round (LIST '200 '1) )
+(getHumanMove (generateRound (LIST '200 '1)))
+;(print(LIST 'l 0 0))
+(terpri)
+;(print(eq 'l (first (read))))
 ;giant loop with parameter a giant list storing all layout, stock, human hand, computer hand, human score, computer score, turn and passed
 ;need a functions to take these as parameters and return it back
 ;functions to edit this list and pass it around
