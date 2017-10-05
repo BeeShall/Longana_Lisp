@@ -68,6 +68,7 @@
 							(position (rest move ) hand :test #'equal)
 							(terpri)
 							(write-line "You have the domino in hand!")
+							validateMove(move layout)
 							
 						)
 						(T 
@@ -96,17 +97,48 @@
 
 (DEFUN validateMove (move layout)
 	( COND (
-		(= 'L (first move))
+		(eq 'L (first move))
 		(
 			;left stuff
+			LET*(
+				(leftDomino (first(rest layout)))
+			)
+			( COND(
+					(= (elt move 1) (first leftDomino))
+					(CONS (first move) (reverse (rest move)))
+				)
+				(
+					(= (elt move 2) (first leftDomino))
+					move
+				)
+				(T 
+					NIL
+				)
+			)
 		) 
 		)
 		(T 
 			(
 				;right stuff
-			))
+				LET*(
+					(rightDomino ( elt layout (- (length layout) 2) )
+				))
+				( COND(
+					(= (elt move 1) (second rightDomino))
+					move
+				)
+				(
+					(= (elt move 2) (second rightDomino))
+					(CONS (first move) (reverse (rest move)))
+				)
+				(T 
+					NIL
+				))
+			)
+		)
 	)
 )
+
 
 (DEFUN getTournamentScore(gameState)
 	( elt gameState 0)
@@ -227,9 +259,10 @@
 
 ;(print ( shuffleDominos  ( generateAllDominos(generateNums 0 6)) ))
 ;(Round (LIST '200 '1) )
-(getHumanMove (generateRound (LIST '200 '1)))
+;(getHumanMove (generateRound (LIST '200 '1)))
 ;(print(LIST 'l 0 0))
 (terpri)
+(print (validateMove '(l 1 2) (LIST 'l '( 1 1) 'r)))
 ;(print(eq 'l (first (read))))
 ;giant loop with parameter a giant list storing all layout, stock, human hand, computer hand, human score, computer score, turn and passed
 ;need a functions to take these as parameters and return it back
