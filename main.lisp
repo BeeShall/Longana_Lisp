@@ -57,27 +57,42 @@
 			(move (read))
 		)
 		( COND
+			;validating if the input format is correct
 			((listp move) 
 				( COND(
+					;validating if the given side is correct
 					(OR (eq 'L (first move) ) (eq 'R (first move)))
 					(LET*(
 						(hand (getHumanHand gameState))
 						(layout (getLayout gameState))
 					)
 					( COND(
+						;checking for if chosen domino is in hand
 							(position (rest move ) hand :test #'equal)
 							(terpri)
 							(write-line "You have the domino in hand!")
-							validateMove(move layout)
+							;need let on placedomino
+							( LET* (
+									(resultMove (validateMove move layout))
+									)
+									( COND (
+										(null resultMove)
+										(terpri)
+										(write-line "You cannot place that domino on that side! Please try again!")
+										(getHumanMove gameState)
+									)
+									(T 
+									 	(updateHumanHand (updateLayout gameState (placeDomino resultMove layout) ) (remove (rest move) hand :test #'equal))
+									)
+								))
+							
+							;use the utility functions
 							
 						)
 						(T 
 							(terpri)
 							(write-line "You don't have that domino. Please select a domino in hand!")
 							(getHumanMove gameState)) )
-					;validate the move
-					;check if is in hand
-					;check if placable
 					))
 					(T 
 						(terpri)
@@ -112,7 +127,7 @@
 					move
 				)
 				(T 
-					NIL
+					()
 				)
 			)
 		) 
@@ -132,11 +147,29 @@
 					(CONS (first move) (reverse (rest move)))
 				)
 				(T 
-					NIL
+					()
 				))
 			)
 		)
 	)
+)
+
+(DEFUN placeDomino(move layout)
+	( COND (
+		(eq 'L (first move))
+		(
+			;left stuff
+			CONS (first layout) (CONS (rest move) (rest layout))
+		) 
+		)
+		(T 
+			(
+				;right stuff
+				reverse (CONS (first (reverse layout)) (CONS (rest move) (rest (reverse layout))))
+			)
+		)
+	)
+
 )
 
 
@@ -152,12 +185,21 @@
 	 ( elt gameState 2 )
 )
 
-(DEFUN getComputerScore(gameState)
-	( elt gameState 3 )
+(DEFUN updateComputerHand(gameState hand)
+	(substitute hand ( elt gameState 2 ) gameState :test #'equal)
+)
+
+
+(DEFUN updateComputerHand(gameState hand)
+	(substitute hand ( elt gameState 2 ) gameState :test #'equal)
 )
 
 (DEFUN getHumanHand(gameState)
 	( elt gameState 4 )
+)
+
+(DEFUN updateHumanHand(gameState hand)
+	(substitute hand ( elt gameState 4 ) gameState :test #'equal)
 )
 
 (DEFUN getHumanScore(gameState)
@@ -168,8 +210,16 @@
 	( elt gameState 6)
 )
 
+(DEFUN updateLayout(gameState layout)
+	(substitute layout ( elt gameState 6 ) gameState :test #'equal)
+)
+
 (DEFUN getStock(gameState)
 	( elt gameState 7 )
+)
+
+(DEFUN updateStock(gameState stock)
+	(substitute stock ( elt gameState 7 ) gameState :test #'equal)
 )
 
 (DEFUN getPlayerPassed(gameState)
@@ -179,6 +229,7 @@
 (DEFUN getTurn(gameState)
 	( elt gameState 9 )
 )
+
 
 
 
@@ -259,12 +310,10 @@
 
 ;(print ( shuffleDominos  ( generateAllDominos(generateNums 0 6)) ))
 ;(Round (LIST '200 '1) )
-;(getHumanMove (generateRound (LIST '200 '1)))
-;(print(LIST 'l 0 0))
 (terpri)
-(print (validateMove '(l 1 2) (LIST 'l '( 1 1) 'r)))
-;(print(eq 'l (first (read))))
-;giant loop with parameter a giant list storing all layout, stock, human hand, computer hand, human score, computer score, turn and passed
-;need a functions to take these as parameters and return it back
-;functions to edit this list and pass it around
-;maybe name it gameState??
+(print (getHumanMove (updateLayout (generateRound (LIST '200 '1)) (LIST 'L '(6 6) 'R))))
+
+
+
+;(print (placeDomino '() (LIST 'L '(a b) '(c d) 'R)) )
+;(print (substitute '( a b c) '(1 2) (LIST '(1 2) '(3 4) '(7 8)) :test #'equal))
