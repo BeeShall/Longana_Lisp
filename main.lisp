@@ -12,14 +12,14 @@
 		(( =  0 (length (getStock gameState)) )
 			(print "Round Ended"))  ;;should be returning a list of scores
 		(T  
-			() );round continues Impldment game logic now
+			() );round continues Implement game logic now
 			;generate the engine first
 	)
 )
 
 
 (DEFUN generateRound(gameState)
-	( LET* (
+	( LET* (**
 			(dominos (shuffleDominos  ( generateAllDominos(generateNums 0 6))))
 		)
 		( APPEND
@@ -27,6 +27,57 @@
 				( LIST (getNElementsFromFront 8 dominos) '0 )
 				( LIST (getNElementsFromFront 8 (removeNElementsFromFront 8 dominos )) '0)
 				( LIST (LIST 'L 'R)  (removeNElementsFromFront 16 dominos) '( ) '( ))
+		)
+	)
+)
+
+(DEFUN determineFirstPlayer(gameState engine)
+	( COND(
+		(null (first (last gameState)))
+		(
+			;no first player or engine decided yet
+			COND (
+				;if human has engine
+				( find engine (getHumanHand gameState) :test #'equal)
+				(terpri)
+				(write "Human has the engine!")
+				(terpri)
+				;remove engine from hand
+				;update layout
+				;set passed to false and next player to computer
+				(reverse (APPEND '()  ( CONS "Computer" (rest (rest (reverse (updateLayout (updateHumanHand gameState (remove engine (getHumanHand gameState)  :test #'equal )) (LIST 'L engine 'R))))))  ))
+			)
+			(
+				;if computer has engine
+				( find engine (getComputerHand gameState) :test #'equal)
+				(terpri)
+				(write "Computer has the engine!")
+				(terpri)
+				;same logic as above
+				(reverse (APPEND '()  (CONS "Human" (rest (rest (reverse (updateLayout (updateComputerHand gameState (remove engine (getComputerHand game )  :test #'equal )) (LIST 'L engine 'R))))))))
+			)
+			(T ;neither of them have the engine
+				(LET* (
+					(updatedState ( updateStock (updateHumanHand gameState (CONS (first (getStock gameState)) (getHumanHand gameState)) ) (rest (getStock gameState) ) ))
+					) 
+					(terpri)
+					(princ "Human drew ")
+					(princ (first (getHumanHand updatedState)))
+					(terpri)
+
+					(terpri)
+					(princ "Computer drew ")
+					(princ (first (getStock updatedState)))
+					(terpri)
+					( determineFirstPlayer ( updateStock (updateComputerHand updatedState (CONS (first (getStock updatedState)) (getComputerHand updatedState))) (rest (getStock updatedState)) ) engine) 
+					
+				)
+			)
+		)
+		)
+		(T 
+			;engine has already been decided
+			gameState
 		)
 	)
 )
@@ -82,6 +133,8 @@
 										(getHumanMove gameState)
 									)
 									(T 
+										;update pass and turn
+										;implement pass concept
 									 	(updateHumanHand (updateLayout gameState (placeDomino resultMove layout) ) (remove (rest move) hand :test #'equal))
 									)
 								))
@@ -108,6 +161,19 @@
 			)
 		)
 	)
+)
+
+(DEFUN displayUserMenu()
+	(terpri)
+	(write-line "----------------------------------------------------------")
+	(write-line "Please select one of the following options: ")
+	(write-line "1. Make a move")
+	(write-line "2. Draw from stock")
+	(write-line "3. Pass")
+	(write-line "4. Hint??")
+	(write-line "----------------------------------------------------------")
+	(terpri)
+
 )
 
 (DEFUN validateMove (move layout)
@@ -310,8 +376,11 @@
 
 ;(print ( shuffleDominos  ( generateAllDominos(generateNums 0 6)) ))
 ;(Round (LIST '200 '1) )
+
+
 (terpri)
-(print (getHumanMove (updateLayout (generateRound (LIST '200 '1)) (LIST 'L '(6 6) 'R))))
+;(trace determineFirstPlayer)
+(print (determineFirstPlayer (generateRound (LIST '200 '1)) '(6 6)))
 
 
 
