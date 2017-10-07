@@ -19,7 +19,7 @@
 
 
 (DEFUN generateRound(gameState)
-	( LET* (**
+	( LET* (
 			(dominos (shuffleDominos  ( generateAllDominos(generateNums 0 6))))
 		)
 		( APPEND
@@ -54,7 +54,7 @@
 				(write "Computer has the engine!")
 				(terpri)
 				;same logic as above
-				(reverse (APPEND '()  (CONS "Human" (rest (rest (reverse (updateLayout (updateComputerHand gameState (remove engine (getComputerHand game )  :test #'equal )) (LIST 'L engine 'R))))))))
+				(reverse (APPEND '()  (CONS "Human" (rest (rest (reverse (updateLayout (updateComputerHand gameState (remove engine (getComputerHand gameState )  :test #'equal )) (LIST 'L engine 'R))))))))
 			)
 			(T ;neither of them have the engine
 				(LET* (
@@ -86,6 +86,7 @@
 		(terpri)
 		(write-line "----------------------------------------------------------")
 		(write-line "Current Layout:")
+		;print layout in 3 lines like you did in c++
 		(princ (getLayout gameState))
 		(terpri)
 		(terpri)
@@ -98,6 +99,8 @@
 )
 
 (DEFUN getHumanMove(gameState)
+	;no options for pass
+	;do it automatically after drawing from stock
 	(terpri)
 	(princ "Human Hand: ")
 	(print(getHumanHand gameState))
@@ -137,9 +140,8 @@
 										;implement pass concept
 									 	(updateHumanHand (updateLayout gameState (placeDomino resultMove layout) ) (remove (rest move) hand :test #'equal))
 									)
-								))
-							
-							;use the utility functions
+								)
+							)
 							
 						)
 						(T 
@@ -236,6 +238,39 @@
 		)
 	)
 
+)
+
+(DEFUN hasMoreMovesHuman (hand layout passed)
+	( COND(
+		(null hand)
+		(write-line "No moves in hand to play")
+		NIL
+	)
+	(
+		(OR (= (first (first hand) ) (second (first hand))) passed)
+		(write-line "Either double or pass")
+		( COND(
+				(OR (validateMove (CONS 'L (first hand)) layout) (validateMove (CONS 'R (first hand)) layout))
+				(print (first hand))
+				(write-line "It was a double or the previous player had passed")
+				T
+			)
+			(T 
+				(hasMoreMovesHuman (rest hand) layout passed ))
+		)
+	)(T 
+		( COND(
+				(validateMove (CONS 'L (first hand) ) layout) 
+				(print(first hand))
+				(write-line "Human played on his side")
+				T
+			)
+			(T 
+				(hasMoreMovesHuman (rest hand) layout passed ) )
+		)
+	)
+
+	)
 )
 
 
@@ -364,7 +399,9 @@
 			())
 		(T
 			(LET* 
-				((x (random (length dominos))))
+				(
+					(state (make-random-state t))
+					(x (random (length dominos) state)))
 				( CONS 
 					(elt dominos x) 
 					(shuffleDominos 
@@ -376,11 +413,18 @@
 
 ;(print ( shuffleDominos  ( generateAllDominos(generateNums 0 6)) ))
 ;(Round (LIST '200 '1) )
-
+(LET*(
+	(round (determineFirstPlayer (generateRound (LIST '200 '1)) '(6 6)))
+	)
+	(displayRoundState round)
+	(print (getHumanHand round))
+	(terpri)
+	(hasMoreMovesHuman (getHumanHand round) (getLayout round) T )
+)
 
 (terpri)
 ;(trace determineFirstPlayer)
-(print (determineFirstPlayer (generateRound (LIST '200 '1)) '(6 6)))
+;(print (determineFirstPlayer (generateRound (LIST '200 '1)) '(6 6)))
 
 
 
