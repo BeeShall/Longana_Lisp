@@ -45,7 +45,7 @@
 				;remove engine from hand
 				;update layout
 				;set passed to false and next player to computer
-				(reverse (APPEND '()  ( CONS "Computer" (rest (rest (reverse (updateLayout (updateHumanHand gameState (remove engine (getHumanHand gameState)  :test #'equal )) (LIST 'L engine 'R))))))  ))
+				(reverse (CONS "Computer"  ( CONS '() (rest (rest (reverse (updateLayout (updateHumanHand gameState (remove engine (getHumanHand gameState)  :test #'equal )) (LIST 'L engine 'R))))))  ))
 			)
 			(
 				;if computer has engine
@@ -54,7 +54,7 @@
 				(write "Computer has the engine!")
 				(terpri)
 				;same logic as above
-				(reverse (APPEND '()  (CONS "Human" (rest (rest (reverse (updateLayout (updateComputerHand gameState (remove engine (getComputerHand gameState )  :test #'equal )) (LIST 'L engine 'R))))))))
+				(reverse (CONS "Human" (CONS '()  (rest (rest (reverse (updateLayout (updateComputerHand gameState (remove engine (getComputerHand gameState )  :test #'equal )) (LIST 'L engine 'R))))))))
 			)
 			(T ;neither of them have the engine
 				(LET* (
@@ -98,7 +98,8 @@
 
 )
 
-(DEFUN getHumanMove(gameState)
+
+(DEFUN playHuman(gameState)
 	;no options for pass
 	;do it automatically after drawing from stock
 	(terpri)
@@ -116,53 +117,63 @@
 				( COND(
 					;validating if the given side is correct
 					(OR (eq 'L (first move) ) (eq 'R (first move)))
-					(LET*(
-						(hand (getHumanHand gameState))
-						(layout (getLayout gameState))
-					)
-					( COND(
-						;checking for if chosen domino is in hand
-							(position (rest move ) hand :test #'equal)
+					( ;if side is right but hasn't been passed or tile is double then reask
+						COND ( 
+							(AND (eq 'R (first move))  (AND (NOT (getPlayerPassed gameState) ) (/= (first (rest move)) (second (rest move)))) )
 							(terpri)
-							(write-line "You have the domino in hand!")
-							;need let on placedomino
-							( LET* (
+							(write-line "You cannot place on the right side at the moment! Please try again!") 
+							(playHuman gameState)
+							)
+						(T 
+							(LET*(
+								(hand (getHumanHand gameState))
+								(layout (getLayout gameState))
+							)
+							( COND(
+								;checking for if chosen domino is in hand
+								(position (rest move ) hand :test #'equal)
+								(terpri)
+								(write-line "You have the domino in hand!")
+								;need let on placedomino
+								( LET* (
 									(resultMove (validateMove move layout))
 									)
 									( COND (
 										(null resultMove)
 										(terpri)
 										(write-line "You cannot place that domino on that side! Please try again!")
-										(getHumanMove gameState)
+										(playHuman gameState)
 									)
 									(T 
 										;update pass and turn
 										;implement pass concept
 									 	(updateHumanHand (updateLayout gameState (placeDomino resultMove layout) ) (remove (rest move) hand :test #'equal))
-									)
+									))
 								)
-							)
 							
+							)
+							(T 
+								(terpri)
+								(write-line "You don't have that domino. Please select a domino in hand!")
+								(playHuman gameState)) )
+							)		
 						)
-						(T 
-							(terpri)
-							(write-line "You don't have that domino. Please select a domino in hand!")
-							(getHumanMove gameState)) )
-					))
+					)
 					(T 
 						(terpri)
 						(write-line "Plese select a valid side!")
-						(getHumanMove gameState)
+						(playHuman gameState)
 					)
 				)
 			)
 			(T 
 				(terpri)
 				(write-line "Invalid move. Please follow the input syntax!!")
-				(getHumanMove gameState)
+				(playHuman gameState)
 			)
 		)
 	)
+)
 )
 
 (DEFUN displayUserMenu()
@@ -413,13 +424,17 @@
 
 ;(print ( shuffleDominos  ( generateAllDominos(generateNums 0 6)) ))
 ;(Round (LIST '200 '1) )
+(terpri)
 (LET*(
 	(round (determineFirstPlayer (generateRound (LIST '200 '1)) '(6 6)))
 	)
+	(print round)
+	(terpri)
 	(displayRoundState round)
 	(print (getHumanHand round))
 	(terpri)
-	(hasMoreMovesHuman (getHumanHand round) (getLayout round) T )
+	;(hasMoreMovesHuman (getHumanHand round) (getLayout round) T )
+	(playHuman round)
 )
 
 (terpri)
