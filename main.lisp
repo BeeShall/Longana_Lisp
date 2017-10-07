@@ -99,13 +99,68 @@
 )
 
 
+(DEFUN displayUserMenu()
+	(terpri)
+	(write-line "----------------------------------------------------------")
+	(write-line "Please select one of the following options: ")
+	(write-line "1. Make a move")
+	(write-line "2. Draw from stock")
+	(write-line "3. Hint??")
+	(write-line "----------------------------------------------------------")
+	(terpri)
+
+)
+
+(DEFUN getHumanMove(gameState hasAlreadyDrawn)
+	(displayUserMenu)
+	(write-line "Your choice: ")
+	(LET* (
+		(choice (read)))
+		(COND(
+			(= choice 1)
+			(playHuman)
+		)
+		(
+			(= choice 2) ;if already drawn check
+			(COND(
+				(= 0 (length (getStock gameState)))
+				(write-line "Stock is empty! So you passed!")
+				(reverse (LIST "Computer" 'T (rest (rest (reverse gameState)))))
+			)
+			( 
+				(eq T hasAlreadyDrawn)
+				(write-line "You already drew a tile from stock! So you passed!")
+				(reverse (LIST "Computer" 'T (rest (rest (reverse gameState)))))
+			)
+			( T 
+				(princ "You drew ")
+				(princ (first (getStock gameState)))
+				(princ "from the stock!")
+				(terpri)
+				(getHumanMove ( updateStock (updateHumanHand gameState (CONS (first (getStock gameState)) (getHumanHand gameState)) ) (rest (getStock gameState)) ) T)
+			))
+		)
+		(
+			(= choice 3)
+			(write-line "Hint logic hasn't been implemented yet!")
+		)
+		(T 
+			(write-line "Invalid move! Please try again!")
+			(getHumanMove gameState hasAlreadyDrawn))
+		)
+	)
+)
+
+
 (DEFUN playHuman(gameState)
 	;no options for pass
 	;do it automatically after drawing from stock
 	(terpri)
+	(write-line "----------------------------------------------------------")
 	(princ "Human Hand: ")
 	(print(getHumanHand gameState))
 	(terpri)
+	(write-line "----------------------------------------------------------")
 	(terpri)
 	(write-line "Please enter the domino you'd like to play enclosed in ( ) with side (L/R) as the first element. E.g. (L 1 6):: ")
 	( LET* (
@@ -176,18 +231,6 @@
 )
 )
 
-(DEFUN displayUserMenu()
-	(terpri)
-	(write-line "----------------------------------------------------------")
-	(write-line "Please select one of the following options: ")
-	(write-line "1. Make a move")
-	(write-line "2. Draw from stock")
-	(write-line "3. Pass")
-	(write-line "4. Hint??")
-	(write-line "----------------------------------------------------------")
-	(terpri)
-
-)
 
 (DEFUN validateMove (move layout)
 	( COND (
@@ -431,10 +474,9 @@
 	(print round)
 	(terpri)
 	(displayRoundState round)
-	(print (getHumanHand round))
 	(terpri)
 	;(hasMoreMovesHuman (getHumanHand round) (getLayout round) T )
-	(playHuman round)
+	(getHumanMove round NIL)
 )
 
 (terpri)
