@@ -1,19 +1,34 @@
-(DEFUN Round ( gameState)
+(DEFUN Round ( gameState engine )
 	( COND
 		( ( <= 2 (length gameState)) ;meaning no round items created
-			(playRound (generateRound gameState )))
+			(playRound ( determineFirstPlayer (generateRound gameState ) engine) ))
 		(T 
-			(playRound gameState))
+			(playRound (determineFirstPlayer gameState engine) ))
 	)
 )
 
 (DEFUN playRound( gameState )
 	( COND
-		(( =  0 (length (getStock gameState)) )
-			(print "Round Ended"))  ;;should be returning a list of scores
+		( ( =  0 (length (getHumanHand gameState)) )
+			(write-line "Round Ended")
+			(write-line "Human won"))  ;;should be returning a list of scores
+		(( =  0 (length (getComputerHand gameState)) )
+			(write-line "Round Ended")
+			(write-line "Computer won"))  ;;should be returning a list of scores
 		(T  
-			() );round continues Implement game logic now
-			;generate the engine first
+			(displayRoundState gameState)
+			( COND (
+				(string= ( getTurn gameState) "Human")
+				(write-line "Its your turn, yayyyyyy!")
+				(terpri)
+				(playRound ( getHumanMove gameState '()))
+			)
+			(T
+				(write-line "Its computer's turn!")
+				(terpri)
+				(playRound  (reverse (CONS "Human" (rest (reverse gameState) ))))
+			) )
+		)
 	)
 )
 
@@ -112,30 +127,47 @@
 )
 
 (DEFUN getHumanMove(gameState hasAlreadyDrawn)
+	(terpri)
+	(write-line "----------------------------------------------------------")
+	(princ "Human Hand: ")
+	(print(getHumanHand gameState))
+	(terpri)
+	(write-line "----------------------------------------------------------")
+	(terpri)
 	(displayUserMenu)
 	(write-line "Your choice: ")
 	(LET* (
 		(choice (read)))
 		(COND(
+			(listp choice)
+			(write-line "Please input a number, not a list!")
+			(getHumanMove gameState hasAlreadyDrawn)
+		)
+		(
+			(string= (type-of choice) "SYMBOL")
+			(write-line "Invalid choice! ")
+			(getHumanMove gameState hasAlreadyDrawn)
+		)
+		(
 			(= choice 1)
-			(playHuman)
+			(playHuman gameState)
 		)
 		(
 			(= choice 2) ;if already drawn check
 			(COND(
 				(= 0 (length (getStock gameState)))
 				(write-line "Stock is empty! So you passed!")
-				(reverse (LIST "Computer" 'T (rest (rest (reverse gameState)))))
+				(reverse (CONS  "Computer"  (CONS 'T (rest (rest (reverse gameState))))))
 			)
 			( 
 				(eq T hasAlreadyDrawn)
 				(write-line "You already drew a tile from stock! So you passed!")
-				(reverse (LIST "Computer" 'T (rest (rest (reverse gameState)))))
+				(reverse (CONS "Computer" (CONS 'T (rest (rest (reverse gameState))))))
 			)
 			( T 
 				(princ "You drew ")
 				(princ (first (getStock gameState)))
-				(princ "from the stock!")
+				(princ " from the stock!")
 				(terpri)
 				(getHumanMove ( updateStock (updateHumanHand gameState (CONS (first (getStock gameState)) (getHumanHand gameState)) ) (rest (getStock gameState)) ) T)
 			))
@@ -145,7 +177,7 @@
 			(write-line "Hint logic hasn't been implemented yet!")
 		)
 		(T 
-			(write-line "Invalid move! Please try again!")
+			(write-line "Invalid choice! ")
 			(getHumanMove gameState hasAlreadyDrawn))
 		)
 	)
@@ -188,7 +220,7 @@
 								;checking for if chosen domino is in hand
 								(position (rest move ) hand :test #'equal)
 								(terpri)
-								(write-line "You have the domino in hand!")
+								(write-line "Debug:: You have the domino in hand!")
 								;need let on placedomino
 								( LET* (
 									(resultMove (validateMove move layout))
@@ -214,21 +246,20 @@
 							)		
 						)
 					)
-					(T 
-						(terpri)
-						(write-line "Plese select a valid side!")
-						(playHuman gameState)
-					)
+				)
+				(T 
+					(terpri)
+					(write-line "Plese select a valid side!")
+					(playHuman gameState)
 				)
 			)
-			(T 
-				(terpri)
-				(write-line "Invalid move. Please follow the input syntax!!")
-				(playHuman gameState)
-			)
 		)
-	)
-)
+		(T 
+			(terpri)
+			(write-line "Invalid move. Please follow the input syntax!!")
+			(playHuman gameState)
+		)
+	))
 )
 
 
@@ -277,13 +308,14 @@
 )
 
 (DEFUN placeDomino(move layout)
+	(write-line "Debug: Placing the domino!")
 	( COND (
 		(eq 'L (first move))
+		(write-line "Debug:: Placing on the left")
 		(
 			;left stuff
 			CONS (first layout) (CONS (rest move) (rest layout))
-		) 
-		)
+		) )
 		(T 
 			(
 				;right stuff
@@ -466,20 +498,10 @@
 )
 
 ;(print ( shuffleDominos  ( generateAllDominos(generateNums 0 6)) ))
-;(Round (LIST '200 '1) )
-(terpri)
-(LET*(
-	(round (determineFirstPlayer (generateRound (LIST '200 '1)) '(6 6)))
-	)
-	(print round)
-	(terpri)
-	(displayRoundState round)
-	(terpri)
-	;(hasMoreMovesHuman (getHumanHand round) (getLayout round) T )
-	(getHumanMove round NIL)
-)
+
 
 (terpri)
+(Round (LIST '200 '1) '(6 6) )
 ;(trace determineFirstPlayer)
 ;(print (determineFirstPlayer (generateRound (LIST '200 '1)) '(6 6)))
 
