@@ -1,7 +1,105 @@
+
+(DEFUN load-file (fileName)
+    (LET* (
+		(in (open fileName :if-does-not-exist nil))
+        (data ( COND (in (read in))
+            (T
+                (write-line "File does not exist.")
+                NIL
+			)))
+		)
+
+        (close in)
+        data
+	)
+)
+
+(DEFUN Tournament( )
+	( write-line "Please enter a tounament score: " )
+	(LET* (
+		(choice (read)))
+		(COND(
+			(listp choice)
+			(write-line "Please input a number, not a list!")
+			(Tournament)
+		)
+		(
+			(string= (type-of choice) "SYMBOL")
+			(write-line "Please input a number, not a string or a character!")
+			(Tournament)
+		)
+		(T 
+			(Round (LIST choice 0) (getEngineFromRoundCount 0 7) )
+		))
+	)
+
+)
+
+(DEFUN playTournament (gameState humanScore computerScore) 
+	( COND (
+		(> (length gameState) 2)
+		;its a loaded game
+		(LET* (
+			(roundResults (Round gameState (getEngineFromRoundCount (getRoundNo gameState) 7) ))
+			)
+			(playTournament 
+				(LIST (first roundResults) (+ 1 (getRoundNo roundResults))) 
+				(+ humanScore (getHumanScore gameState) (getHumanScore roundResults)) 
+				(+ computerScore (getComputerScore gameState) (getComputerScore roundResults))
+			)
+		)
+	)
+	(T
+		(terpri)
+		(write-line "Tournament scores: ")
+		(terpri)
+		(princ "Human: ")
+		(princ humanScore)
+		(terpri)
+		(princ "Computer : ")
+		(princ computerScore)
+		(terpri)
+		( COND (
+			(AND ( > humanScore 0 ) ( > humanScore computerScore))
+			(terpri)
+			(write-line "Human won the tournament! ")
+		)
+		(
+			(AND ( > computerScore 0 ) ( > computerScore humanScore))
+			(terpri)
+			(write-line "Computer won the tournament! ")
+		)
+		(T 
+			(LET* (
+				(roundResults (Round gameState (getEngineFromRoundCount (getRoundNo gameState) 7) ))
+			)
+			(playTournament (LIST (first roundResults) (+ 1 (getRoundNo roundResults))) (+ humanScore (getHumanScore roundResults)) (+ computerScore (getComputerScore roundResults)))
+			)
+		))
+
+	) )
+)
+
+(DEFUN getEngineFromRoundCount (roundCount pipCount) 
+	( LET*
+		( 
+			(tempPip (mod roundCount pipCount))
+		)
+		( COND (
+			(= 0 tempPip)
+			'(0 0)
+		)
+		(T 
+			(LIST (- pipCount tempPip) (- pipCount tempPip))
+		))
+	)
+)
+
+
 (DEFUN Round ( gameState engine )
 	( COND
-		( ( <= 2 (length gameState)) ;meaning no round items created
-			(playRound ( determineFirstPlayer (generateRound gameState ) engine) ))
+		( ( <= (length gameState) 2) ;meaning no round items created
+			(playRound (determineFirstPlayer (generateRound gameState ) engine) ))
 		(T 
 			(playRound (determineFirstPlayer gameState engine) ))
 	)
@@ -49,6 +147,7 @@
 (DEFUN determineFirstPlayer(gameState engine)
 	( COND(
 		(null (first (last gameState)))
+		;meaning if none of the players have engine, which means turns hasn't been set yet
 		(
 			;no first player or engine decided yet
 			COND (
@@ -376,10 +475,10 @@
 	(substitute hand ( elt gameState 2 ) gameState :test #'equal)
 )
 
-
-(DEFUN updateComputerHand(gameState hand)
-	(substitute hand ( elt gameState 2 ) gameState :test #'equal)
+(DEFUN getHumanScore(gameState)
+	( elt gameState 3 )
 )
+
 
 (DEFUN getHumanHand(gameState)
 	( elt gameState 4 )
@@ -497,15 +596,7 @@
 	)
 )
 
-;(print ( shuffleDominos  ( generateAllDominos(generateNums 0 6)) ))
-
-
 (terpri)
-(Round (LIST '200 '1) '(6 6) )
-;(trace determineFirstPlayer)
-;(print (determineFirstPlayer (generateRound (LIST '200 '1)) '(6 6)))
-
-
-
-;(print (placeDomino '() (LIST 'L '(a b) '(c d) 'R)) )
-;(print (substitute '( a b c) '(1 2) (LIST '(1 2) '(3 4) '(7 8)) :test #'equal))
+;(print (length (load-file "./case1.txt")))
+(playTournament (load-file "./case1.txt") 0 0)
+;(Round (LIST '200 '1) '(6 6) )
