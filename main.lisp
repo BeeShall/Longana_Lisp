@@ -1,16 +1,42 @@
 
-(DEFUN load-file (fileName)
+(DEFUN loadFile ()
+	(write-line "Please enter a filename: ")
     (LET* (
-		(in (open fileName :if-does-not-exist nil))
+		(in (open (read) :if-does-not-exist nil))
         (data ( COND (in (read in))
             (T
+				(terpri)
                 (write-line "File does not exist.")
-                NIL
+                (loadFile)
 			)))
 		)
-
-        (close in)
+		(COND (
+			(null in)
+			NIL
+		)
+		(T 
+			(close in)
+		))
         data
+	)
+)
+
+(DEFUN Longana ()
+ 	(terpri)
+	(terpri)
+	(write-line "Welcome to Lonagana!")
+	(terpri)
+	(write-line "Would you like to load a game? (Y for yes, anything else for no) ")
+	(LET* (
+		(choice (read))
+	)
+	(COND (
+		(eq choice 'Y )
+		(playTournament (loadFile) 0 0)
+		)
+		(T
+			(Tournament)
+		))
 	)
 )
 
@@ -23,13 +49,8 @@
 			(write-line "Please input a number, not a list!")
 			(Tournament)
 		)
-		(
-			(string= (type-of choice) "SYMBOL")
-			(write-line "Please input a number, not a string or a character!")
-			(Tournament)
-		)
 		(T 
-			(Round (LIST choice 0) (getEngineFromRoundCount 0 7) )
+			(GameRound (LIST choice 1) (getEngineFromRoundCount 0 7) )
 		))
 	)
 
@@ -40,13 +61,19 @@
 		(> (length gameState) 2)
 		;its a loaded game
 		(LET* (
-			(roundResults (Round gameState (getEngineFromRoundCount (getRoundNo gameState) 7) ))
+			(roundResults (GameRound gameState (getEngineFromRoundCount (getRoundNo gameState) 7) ))
 			)
-			(playTournament 
+			( COND (
+				(null roundResults)
+				()
+			)
+			(T 
+				(playTournament 
 				(LIST (first roundResults) (+ 1 (getRoundNo roundResults))) 
 				(+ humanScore (getHumanScore gameState) (getHumanScore roundResults)) 
 				(+ computerScore (getComputerScore gameState) (getComputerScore roundResults))
 			)
+			))	
 		)
 	)
 	(T
@@ -71,13 +98,21 @@
 		)
 		(T 
 			(LET* (
-				(roundResults (Round gameState (getEngineFromRoundCount (getRoundNo gameState) 7) ))
+				(roundResults (GameRound gameState (getEngineFromRoundCount (getRoundNo gameState) 7) ))
 			)
-			(playTournament (LIST (first roundResults) (+ 1 (getRoundNo roundResults))) (+ humanScore (getHumanScore roundResults)) (+ computerScore (getComputerScore roundResults)))
+			( COND (
+					(null roundResults)
+					()
+				)
+				(T
+					(playTournament 
+						(LIST (first roundResults) (+ 1 (getRoundNo roundResults))) 
+						(+ humanScore (getHumanScore roundResults))
+						(+ computerScore (getComputerScore roundResults)))
+				)
 			)
-		))
-
-	) )
+		))) 
+	))
 )
 
 (DEFUN getEngineFromRoundCount (roundCount pipCount) 
@@ -96,12 +131,19 @@
 )
 
 
-(DEFUN Round ( gameState engine )
-	( COND
-		( ( <= (length gameState) 2) ;meaning no round items created
-			(playRound (determineFirstPlayer (generateRound gameState ) engine) ))
+(DEFUN GameRound ( gameState engine )
+	( COND(
+		(askToSave (generateRound gameState ))
+		()
+		) 
 		(T 
-			(playRound (determineFirstPlayer gameState engine) ))
+			( COND
+				( ( <= (length gameState) 2) ;meaning no round items created
+					(playRound (determineFirstPlayer (generateRound gameState ) engine) ))
+				(T 
+					(playRound (determineFirstPlayer gameState engine) ))
+			)
+		)
 	)
 )
 
@@ -119,7 +161,12 @@
 				(string= ( getTurn gameState) "Human")
 				(write-line "Its your turn, yayyyyyy!")
 				(terpri)
-				(playRound ( getHumanMove gameState '()))
+				( COND(
+					(askToSave gameState)
+					NIL
+				)(T 
+					(playRound ( getHumanMove gameState '()))
+				) )	
 			)
 			(T
 				(write-line "Its computer's turn!")
@@ -596,7 +643,33 @@
 	)
 )
 
+(DEFUN askToSave(gameState) 
+	(displayRoundState gameState)
+	(terpri)
+	(write-line "Would you like to save and quit? Y for yes, everything else for no.")
+	(LET* (
+		(choice (read))
+	)
+	(COND (
+			(eq choice 'Y )
+			(serialize gameState)
+			T
+		)
+		(T
+			()
+		))
+	)
+
+)
+
+(DEFUN serialize (gameState)
+	(with-open-file (output "./game.txt" 
+                            :direction :output :if-exists :supersede)
+		(format output "~a" gameState)
+
+	)
+)
+
 (terpri)
-;(print (length (load-file "./case1.txt")))
-(playTournament (load-file "./case1.txt") 0 0)
-;(Round (LIST '200 '1) '(6 6) )
+(trace GameRound)
+(Longana)
