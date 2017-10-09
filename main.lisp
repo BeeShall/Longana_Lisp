@@ -1,4 +1,3 @@
-
 (DEFUN loadFile ()
 	(write-line "Please enter a filename: ")
     (LET* (
@@ -155,6 +154,7 @@
 		(( =  0 (length (getComputerHand gameState)) )
 			(write-line "Round Ended")
 			(write-line "Computer won"))  ;;should be returning a list of scores
+			;need the logic for two passes and determining the winner
 		(T  
 			(displayRoundState gameState)
 			( COND (
