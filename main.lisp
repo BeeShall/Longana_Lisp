@@ -49,7 +49,7 @@
 			(Tournament)
 		)
 		(T 
-			(GameRound (LIST choice 1) (getEngineFromRoundCount 0 7) )
+			(GameRound (LIST choice 1) (getEngineFromRoundCount 1 7) )
 		))
 	)
 
@@ -157,22 +157,25 @@
 			;need the logic for two passes and determining the winner
 		(T  
 			(displayRoundState gameState)
-			( COND (
-				(string= ( getTurn gameState) "Human")
-				(write-line "Its your turn, yayyyyyy!")
-				(terpri)
-				( COND(
+			( COND(
 					(askToSave gameState)
 					NIL
 				)(T 
-					(playRound ( getHumanMove gameState '()))
-				) )	
-			)
-			(T
-				(write-line "Its computer's turn!")
-				(terpri)
-				(playRound  (reverse (CONS "Human" (rest (reverse gameState) ))))
-			) )
+					( COND (
+						(string= ( getTurn gameState) "Human")
+						(write-line "Its your turn, yayyyyyy!")
+						(terpri)
+						(playRound ( getHumanMove gameState '()))
+						)
+						(T
+							(write-line "Its computer's turn!")
+							(terpri)
+							(playRound  ( getComputerMove gameState '()))
+						) 
+					)
+				) 
+			)	
+			
 		)
 	)
 )
@@ -272,6 +275,47 @@
 
 )
 
+(DEFUN getComputerMove (gameState hasAlreadyDrawn)
+	(terpri)
+	(write-line "----------------------------------------------------------")
+	(princ "Computer Hand: ")
+	(print(getComputerHand gameState))
+	(terpri)
+	(write-line "----------------------------------------------------------")
+	(terpri)
+	( LET* (
+		(compMove (getHint (getLayout gameState) (getComputerHand gameState) (getPlayerPassed gameState) 'R ))
+	)
+	( COND(
+		(null compMove)
+		(write-line "Debug: Computer doesn't have any valid moves in hand")
+		( COND ( ;if the computer hasn't drawn
+			(null hasAlreadyDrawn)
+			( COND (
+				(= 0 (length (getStock gameState)))
+				(write-line "Stock is empty! So computer passed!")
+				(reverse (CONS  "Human"  (CONS 'T (rest (rest (reverse gameState))))))
+			) 
+			(T 
+				(princ "Computer drew ")
+				(princ (first (getStock gameState)))
+				(princ " from the stock!")
+				(terpri)
+				(getComputerMove ( updateStock (updateComputerHand gameState (CONS (first (getStock gameState)) (getComputerHand gameState)) ) (rest (getStock gameState)) ) T)
+			)))
+		(T ;pass
+			(write-line "Computer has passed!")
+			(reverse (CONS "Human" (CONS 'T (rest (rest (reverse gameState))))))
+				
+		)))
+		(T 
+			(reverse (CONS "Human" (rest ( reverse (updateComputerHand (updateLayout gameState (placeDomino compMove (getLayout gameState)) ) (remove (rest compMove) (getComputerHand gameState) :test #'equal)) ) )))						
+		)
+			
+	))
+)
+
+
 (DEFUN getHumanMove(gameState hasAlreadyDrawn)
 	(terpri)
 	(write-line "----------------------------------------------------------")
@@ -315,9 +359,26 @@
 		)
 		(
 			(= choice 3)
-			(print (getAllPossibleMoves (getLayout gameState) (getHumanHand gameState) (getPlayerPassed gameState) 'L))
-			(write-line "Hint logic hasn't been implemented yet!")
-			gameState
+			(LET* (
+					(gameHint (getHint (getLayout gameState) (getHumanHand gameState) (getPlayerPassed gameState) 'L) )
+				)
+				( COND( 
+				(null gameHint )
+				(write-line "There are no possible moves on you hand!")
+				( COND (
+					(null hasAlreadyDrawn)
+					(write-line "You'll have to draw from stock!")
+					(getHumanMove gameState hasAlreadyDrawn)
+				)
+				(T 
+					(write-line "You can only pass now! So your turn has been passed!")
+					(reverse (CONS "Computer" (CONS 'T (rest (rest (reverse gameState))))))
+				))
+			)
+			(T 
+				(getHumanMove gameState hasAlreadyDrawn)
+			) )
+			)
 		)
 		(T 
 			(write-line "Invalid choice! ")
@@ -377,7 +438,7 @@
 									(T 
 										;update pass and turn
 										;implement pass concept
-									 	(updateHumanHand (updateLayout gameState (placeDomino resultMove layout) ) (remove (rest move) hand :test #'equal))
+									 	(reverse (CONS "Computer" (rest (reverse (updateHumanHand (updateLayout gameState (placeDomino resultMove layout) ) (remove (rest move) hand :test #'equal))))))
 									))
 								)
 							
@@ -502,8 +563,51 @@
 	)
 )
 
-(DEFUN getHint(gameState)
-	(
+(DEFUN getHint(layout hand passed side)
+	(terpri)
+	(write-line "----------------------------------------------------------")
+	(write-line "Strategy:")
+	( LET*(
+		(sortedMoves (sort (getAllPossibleMoves layout hand passed side) #'compareDominos))
+		)
+		( COND(
+			(null sortedMoves) ;no moves
+			NIL
+		) 
+		(
+			(NOT (eq (first (first sortedMoves)) 'A)) ;if it can only be placed on the side 
+			(terpri)
+			(format t "~S can be played on the ~A! ~%" (rest (first sortedMoves)) (getSideName side))
+			(format t "This move decreases the total sum in hand by  = ~D ~%" (+ (first (rest (first sortedMoves)) ) (first (last (first sortedMoves))) ) )
+			(first sortedMoves)
+		)
+		(T ;if any side is possible
+			(terpri)
+			(format t "This move decreases the total sum in hand by  = ~D " (+ (first (rest (first sortedMoves)) ) (first (last (first sortedMoves))) ) )
+			(terpri)
+			(write-line "However, This tile can be placed on either side!")
+			(LET* (
+				(leftMax (getNextMoveScoresAfterPlacement layout hand ( CONS 'L (rest (first sortedMoves))) passed side))
+				(rightMax (getNextMoveScoresAfterPlacement layout hand (CONS 'R (rest (first sortedMoves))) passed side))
+			)
+			( COND (
+				(> leftMax rightMax)
+				(format t "If placed on LEFT, this move decreases the total sum in hand by  = ~D ~%" leftMax)
+				(CONS 'L (rest (first sortedMoves) ))
+			)
+			(
+				(< leftMax rightMax)
+				(format t "If placed on RIGHT, this move decreases the total sum in hand by  = ~D ~%" rightMax)
+				(CONS 'R (rest (first sortedMoves) ))
+			)
+			(T 
+				(write-line "This move will yield the same score on the next move regardless of the side you choose. So placing it on the otherSide would create more chances of screwing the opponent over!")
+				(CONS (flipSide side) (rest (first sortedMoves) ))
+			)
+
+			))
+		
+		))
 
 	)
 )
@@ -515,13 +619,13 @@
 	)
 	(T 
 		( COND(
-			(AND (null passed) (/= (first (first hand)) (second (first hand)))) ;or not double
+			(AND (null passed) (/= (first (first hand)) (second (first hand)))) ;not passed and not double
 			( COND (
 				(null (validateMove (CONS side (first hand)) layout ))
 				(getAllPossibleMoves layout (rest hand) passed side)	
 			)
 			(T 
-			(LIST (CONS side (first hand)) (getAllPossibleMoves layout (rest hand) passed side))))
+			(APPEND (LIST (CONS side (first hand)) ) (getAllPossibleMoves layout (rest hand) passed side))))
 			;condition check on player side
 		)
 		(T ;if passed or double
@@ -530,8 +634,8 @@
 					(right (validateMove (CONS 'R (first hand)) layout ))
 				)
 				( COND (
-					(AND (NOT (null left) ) (NOT (null right) )) ;if it can be place on both sides
-					(LIST (CONS 'L (first hand)) (CONS 'R (first hand)) (getAllPossibleMoves layout (rest hand) passed side))
+					(AND (NOT (null left) ) (NOT (null right) )) ;if it can be place on both sides 
+					(LIST (CONS 'A (first hand)) (getAllPossibleMoves layout (rest hand) passed side)) ; A means any
 				)
 				(
 					(NOT (null left))
@@ -551,6 +655,46 @@
 
 	)
 )
+
+(DEFUN compareDominos ( a b)
+	( COND (
+		(>= (+ (first (rest a) ) (first (last a)) ) (+ (first (rest b)) (first (last b)) ) )
+		T
+	)
+	(T 
+		NIL )
+
+	)
+)
+
+( DEFUN getNextMoveScoresAfterPlacement (layout hand move passed side)
+	( LET* (
+		 (sortedMoves (sort (getAllPossibleMoves (placeDomino resultMove layout) (remove (rest move) hand :test #'equal) passed side) #'compareDominos) )
+	)
+	(+ (first (rest (first sortedMoves)) ) (first (last (first sortedMoves))) )
+	)
+ )
+
+ (DEFUN flipSide(side)
+	(COND(
+		(eq side 'L)
+		'R
+	)
+	(T 
+		'L)
+	)
+ )
+
+  (DEFUN getSideName(side)
+	(COND(
+		(eq side 'L)
+		"Left"
+	)
+	(T 
+		"Right")
+	)
+ )
+
 
 
 (DEFUN getTournamentScore(gameState)
@@ -691,7 +835,6 @@
 )
 
 (DEFUN askToSave(gameState) 
-	(displayRoundState gameState)
 	(terpri)
 	(write-line "Would you like to save and quit? Y for yes, everything else for no.")
 	(LET* (
@@ -718,5 +861,4 @@
 )
 
 (terpri)
-(trace playRound)
 (Longana)
