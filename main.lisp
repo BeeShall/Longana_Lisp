@@ -290,11 +290,6 @@
 			(getHumanMove gameState hasAlreadyDrawn)
 		)
 		(
-			(string= (type-of choice) "SYMBOL")
-			(write-line "Invalid choice! ")
-			(getHumanMove gameState hasAlreadyDrawn)
-		)
-		(
 			(= choice 1)
 			(playHuman gameState)
 		)
@@ -320,7 +315,9 @@
 		)
 		(
 			(= choice 3)
+			(print (getAllPossibleMoves (getLayout gameState) (getHumanHand gameState) (getPlayerPassed gameState) 'L))
 			(write-line "Hint logic hasn't been implemented yet!")
+			gameState
 		)
 		(T 
 			(write-line "Invalid choice! ")
@@ -505,6 +502,56 @@
 	)
 )
 
+(DEFUN getHint(gameState)
+	(
+
+	)
+)
+
+(DEFUN getAllPossibleMoves(layout hand passed side)
+	( COND (
+		(null hand)
+		()
+	)
+	(T 
+		( COND(
+			(AND (null passed) (/= (first (first hand)) (second (first hand)))) ;or not double
+			( COND (
+				(null (validateMove (CONS side (first hand)) layout ))
+				(getAllPossibleMoves layout (rest hand) passed side)	
+			)
+			(T 
+			(LIST (CONS side (first hand)) (getAllPossibleMoves layout (rest hand) passed side))))
+			;condition check on player side
+		)
+		(T ;if passed or double
+			( LET* (
+					(left (validateMove (CONS 'L (first hand)) layout ))
+					(right (validateMove (CONS 'R (first hand)) layout ))
+				)
+				( COND (
+					(AND (NOT (null left) ) (NOT (null right) )) ;if it can be place on both sides
+					(LIST (CONS 'L (first hand)) (CONS 'R (first hand)) (getAllPossibleMoves layout (rest hand) passed side))
+				)
+				(
+					(NOT (null left))
+					(LIST (CONS 'L (first hand)) (getAllPossibleMoves layout (rest hand) passed side))
+				)
+				(
+					(NOT (null right))
+					(LIST (CONS 'R (first hand)) (getAllPossibleMoves layout (rest hand) passed side))
+				)
+				( T 
+				(getAllPossibleMoves layout (rest hand) passed side) )
+					
+				)	
+			)
+		) )
+	)
+
+	)
+)
+
 
 (DEFUN getTournamentScore(gameState)
 	( elt gameState 0)
@@ -671,5 +718,5 @@
 )
 
 (terpri)
-(trace GameRound)
+(trace playRound)
 (Longana)
