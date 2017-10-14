@@ -1,25 +1,3 @@
-(DEFUN loadFile ()
-	(write-line "Please enter a filename: ")
-    (LET* (
-		(in (open (read) :if-does-not-exist nil))
-        (data ( COND (in (read in))
-            (T
-				(terpri)
-                (write-line "File does not exist.")
-                (loadFile)
-			)))
-		)
-		(COND (
-			(null in)
-			NIL
-		)
-		(T 
-			(close in)
-		))
-        data
-	)
-)
-
 (DEFUN Longana ()
  	(terpri)
 	(terpri)
@@ -48,6 +26,29 @@
 		))
 	)
 )
+
+(DEFUN loadFile ()
+	(write-line "Please enter a filename: ")
+    (LET* (
+		(in (open (read) :if-does-not-exist nil))
+        (data ( COND (in (read in))
+            (T
+				(terpri)
+                (write-line "File does not exist.")
+                (loadFile)
+			)))
+		)
+		(COND (
+			(null in)
+			NIL
+		)
+		(T 
+			(close in)
+		))
+        data
+	)
+)
+
 
 (DEFUN Tournament( )
 	( write-line "Please enter a tounament score: " )
@@ -93,7 +94,6 @@
 	(T
 		(terpri)
 		(write-line "Tournament scores: ")
-		(terpri)
 		(princ "Human: ")
 		(princ humanScore)
 		(terpri)
@@ -101,14 +101,14 @@
 		(princ computerScore)
 		(terpri)
 		( COND (
-			(AND ( > humanScore 0 ) ( > humanScore computerScore))
+			(AND ( > humanScore 0 ) ( > humanScore (getTournamentScore gameState)))
 			(terpri)
-			(write-line "Human won the tournament! ")
+			(format t "Human won the tournament with a score of ~D! ~%" humanScore)
 		)
 		(
-			(AND ( > computerScore 0 ) ( > computerScore humanScore))
+			(AND ( > computerScore 0 ) ( > computerScore (getTournamentScore gameState)))
 			(terpri)
-			(write-line "Computer won the tournament! ")
+			(format t "Computer won the tournament with a score of ~D! ~%" computerScore)
 		)
 		(T 
 			(LET* (
@@ -146,17 +146,11 @@
 
 
 (DEFUN GameRound ( gameState engine )
-	( COND(
-		(askToSave (generateRound gameState ))
-		()
-		) 
+	( COND
+		( ( <= (length gameState) 2) ;meaning no round items created
+			(playRound (determineFirstPlayer (generateRound gameState ) engine) '0))
 		(T 
-			( COND
-				( ( <= (length gameState) 2) ;meaning no round items created
-					(playRound (determineFirstPlayer (generateRound gameState ) engine) '0))
-				(T 
-					(playRound (determineFirstPlayer gameState engine) (getPassCountFromState gameState)))
-			)
+			(playRound (determineFirstPlayer gameState engine) (getPassCountFromState gameState))
 		)
 	)
 )
@@ -169,21 +163,22 @@
 (T 
 	'1)))
 
+
 (DEFUN playRound( gameState passCount)
+	(terpri)
 	( COND
 		( ( =  0 (length (getHumanHand gameState)) )
 			(write-line "Round Ended")
 			(write-line "Human Won")
-			())  ;;should be returning a list of scores
+		  	(LIST (getTournamentScore gameState) (getRoundNo gameState) '() '0 '()  (addAllPips (getComputerHand gameState))))
 		(( =  0 (length (getComputerHand gameState)) )
 			(write-line "Round Ended")
 			(write-line "Computer Won")
-			())  ;;should be returning a list of scores
-			;need the logic for two passes and determining the winner
+			(LIST (getTournamentScore gameState) (getRoundNo gameState) '() (addAllPips (getComputerHand gameState)) '() '0))
 		((> passCount 2)
 			(write-line "There are no more legal moves in the game!")
 			(write-line "Round Ended!")
-			())
+			(getRoundWinner gameState))
 		(T  
 			(displayRoundState gameState)
 			( COND(
@@ -288,9 +283,7 @@
 		(terpri)
 		(write-line "----------------------------------------------------------")
 		(write-line "Current Layout:")
-		;print layout in 3 lines like you did in c++
-		(princ (getLayout gameState))
-		(terpri)
+		(printLayout (getLayout gameState))
 		(terpri)
 		(write-line "Current Stock: ")
 		(princ (getStock gameState))
@@ -315,12 +308,11 @@
 
 (DEFUN getComputerMove (gameState hasAlreadyDrawn)
 	(terpri)
-	(write-line "----------------------------------------------------------")
 	(princ "Computer Hand: ")
 	(print(getComputerHand gameState))
 	(terpri)
-	(write-line "----------------------------------------------------------")
 	(terpri)
+	(write-line "----------------------------------------------------------")
 	(write-line "Conputer's move: ")
 	( LET* (
 		(compMove (getHint (getLayout gameState) (getComputerHand gameState) (getPlayerPassed gameState) 'R ))
@@ -356,12 +348,9 @@
 
 (DEFUN getHumanMove(gameState hasAlreadyDrawn)
 	(displayRoundState gameState)
-	(terpri)
-	(write-line "----------------------------------------------------------")
 	(princ "Human Hand: ")
 	(print(getHumanHand gameState))
 	(terpri)
-	(write-line "----------------------------------------------------------")
 	(terpri)
 	(displayUserMenu)
 	(write-line "Your choice: ")
@@ -383,7 +372,13 @@
 		)
 		(
 			(= choice 2) ;if already drawn check
-			(COND(
+			( COND
+			(
+				(not (null (hasMoreMovesHuman (getHumanHand gameState) (getLayout gameState) (getPlayerPassed gameState))))
+				(write-line "You already have valid moves in hand!")
+				(getHumanMove gameState hasAlreadyDrawn)
+			)
+			(
 				(= 0 (length (getStock gameState)))
 				(write-line "Stock is empty! So you passed!")
 				(reverse (CONS  "Computer"  (CONS 'T (rest (rest (reverse gameState))))))
@@ -403,6 +398,7 @@
 		)
 		(
 			(= choice 3)
+			(write-line "----------------------------------------------------------")
 			(write-line "Hint: ")
 			(LET* (
 					(gameHint (getHint (getLayout gameState) (getHumanHand gameState) (getPlayerPassed gameState) 'L) )
@@ -578,12 +574,10 @@
 (DEFUN hasMoreMovesHuman (hand layout passed)
 	( COND(
 		(null hand)
-		(write-line "No moves in hand to play")
 		NIL
 	)
 	(
 		(OR (= (first (first hand) ) (second (first hand))) passed)
-		(write-line "Either double or pass")
 		( COND(
 				(OR (validateMove (CONS 'L (first hand)) layout) (validateMove (CONS 'R (first hand)) layout))
 				(print (first hand))
@@ -618,9 +612,7 @@
 		) 
 		(
 			(NOT (eq (first (first sortedMoves)) 'A)) ;if it can only be placed on the side 
-			(terpri)
 			(format t "~S on the ~A! ~%" (rest (first sortedMoves)) (getSideName (first (first sortedMoves))))
-			(terpri)
 			(terpri)
 			(write-line "----------------------------------------------------------")
 			(write-line "Strategy:")
@@ -628,6 +620,7 @@
 			(first sortedMoves)
 		)
 		(T ;if any side is possible
+			(format t "~S ~%" (rest (first sortedMoves)))
 			(terpri)
 			(format t "This move decreases the total sum in hand by  = ~D " (+ (first (rest (first sortedMoves)) ) (first (last (first sortedMoves))) ) )
 			(terpri)
@@ -647,7 +640,7 @@
 				(CONS 'R (rest (first sortedMoves) ))
 			)
 			(T 
-				(write-line "This move will yield the same score on the next move regardless of the side you choose. So placing it on the otherSide would create more chances of screwing the opponent over!")
+				(write-line "This move will yield the same score on the next move regardless of the side you choose. So placing it on the OPPOSITE SIDE would create more chances of screwing the opponent over!")
 				(CONS (flipSide side) (rest (first sortedMoves) ))
 			)
 
@@ -742,6 +735,35 @@
 	)
  )
 
+(DEFUN getRoundWinner(gameState)
+	(terpri)
+	( LET*(
+		(humanHand (addAllPips (getHumanHand gameState)))
+		(computerHand (addAllPips (getComputerHand gameState)))
+	)
+	(write-line "Round Scores: ")
+	(format t "Human: ~D ~%" computerHand)
+	(format t "Computer: ~D ~%" humanHand)
+	( COND (
+		(> humanHand computerHand)
+		(write-line "Computer is the winner")
+		(LIST (getTournamentScore gameState) (getRoundNo gameState) '() humanHand '()  '0)
+		)
+		(T 
+		(write-line "Human is the winner")
+		(LIST (getTournamentScore gameState) (getRoundNo gameState) '() '0 '() computerHand))
+	)
+))
+
+(DEFUN addAllPips(hand)
+	( COND (
+		(null hand)
+		'0
+	) 
+	(T 
+		(+ (first (first hand)) (second (first hand)) (addAllPips (rest hand)))  
+	))
+)
 
 
 (DEFUN getTournamentScore(gameState)
@@ -760,7 +782,7 @@
 	(substitute hand ( elt gameState 2 ) gameState :test #'equal)
 )
 
-(DEFUN getHumanScore(gameState)
+(DEFUN getComputerScore(gameState)
 	( elt gameState 3 )
 )
 
@@ -800,10 +822,6 @@
 (DEFUN getTurn(gameState)
 	( elt gameState 9 )
 )
-
-
-
-
 
 (DEFUN generateNums(start end)
 	( COND 
@@ -899,6 +917,51 @@
 
 )
 
+(DEFUN printLayout (layout)
+	( LET*(
+		(trimmedLayout (remove 'R (rest layout) :test #'equal))
+	)
+	(printFirstLine trimmedLayout)
+	(format t "L")
+	(printSecondLine trimmedLayout)
+	(printFirstLine trimmedLayout))
+)
+
+(DEFUN printFirstLine (layout)
+	(COND (
+		(null layout) ;nothing in layout
+		(write-line "")
+	)
+	(T
+		( COND (
+			(eq (first (first layout)) (second (first layout)))
+			(format t "  ~D" (first (first layout)))
+		)
+		(T 
+			(format t "     ")
+		) )
+		(printFirstLine (rest layout))
+	))
+)
+
+(DEFUN printSecondLine (layout)
+	(COND (
+		(null layout) ;nothing in layout
+		(write-line " R")
+	)
+	(T
+		( COND (
+			(eq (first (first layout)) (second (first layout)))
+			(format t " | " (first (first layout)))
+		)
+		(T 
+			(format t " ~D-~D " (first (first layout)) (second (first layout)) )
+		) )
+		(printSecondLine (rest layout))
+	))
+)
+
+
 (DEFUN serialize (gameState)
 	(with-open-file (output "./game.txt" 
                             :direction :output :if-exists :supersede)
@@ -908,6 +971,5 @@
 )
 
 (terpri)
-(trace playRound)
-(trace getAllPossibleMoves)
+(trace determineFirstPlayer)
 (Longana)
