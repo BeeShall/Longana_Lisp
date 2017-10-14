@@ -29,7 +29,17 @@
 	(LET* (
 		(choice (read))
 	)
-	(COND (
+	(COND(
+		(listp choice)
+		(write-line "Please input a number, not a list!")
+		(Longana)
+	) 
+	(
+		(numberp choice)
+		(write-line "Invalid choice!")
+		(Longana)
+	) 
+	(
 		(eq choice 'Y )
 		(playTournament (loadFile) 0 0)
 		)
@@ -48,6 +58,11 @@
 			(write-line "Please input a number, not a list!")
 			(Tournament)
 		)
+		(
+			(symbolp choice)
+			(write-line "Please input a number, not a symbol!")
+			(Tournament)
+		) 
 		(T 
 			(GameRound (LIST choice 1) (getEngineFromRoundCount 1 7) )
 		))
@@ -138,23 +153,37 @@
 		(T 
 			( COND
 				( ( <= (length gameState) 2) ;meaning no round items created
-					(playRound (determineFirstPlayer (generateRound gameState ) engine) ))
+					(playRound (determineFirstPlayer (generateRound gameState ) engine) '0))
 				(T 
-					(playRound (determineFirstPlayer gameState engine) ))
+					(playRound (determineFirstPlayer gameState engine) (getPassCountFromState gameState)))
 			)
 		)
 	)
 )
 
-(DEFUN playRound( gameState )
+(DEFUN getPassCountFromState (gameState)
+( COND (
+	(NULL (getPlayerPassed gameState))
+	'0
+)
+(T 
+	'1)))
+
+(DEFUN playRound( gameState passCount)
 	( COND
 		( ( =  0 (length (getHumanHand gameState)) )
 			(write-line "Round Ended")
-			(write-line "Human won"))  ;;should be returning a list of scores
+			(write-line "Human Won")
+			())  ;;should be returning a list of scores
 		(( =  0 (length (getComputerHand gameState)) )
 			(write-line "Round Ended")
-			(write-line "Computer won"))  ;;should be returning a list of scores
+			(write-line "Computer Won")
+			())  ;;should be returning a list of scores
 			;need the logic for two passes and determining the winner
+		((> passCount 2)
+			(write-line "There are no more legal moves in the game!")
+			(write-line "Round Ended!")
+			())
 		(T  
 			(displayRoundState gameState)
 			( COND(
@@ -165,12 +194,12 @@
 						(string= ( getTurn gameState) "Human")
 						(write-line "Its your turn, yayyyyyy!")
 						(terpri)
-						(playRound ( getHumanMove gameState '()))
+						(updatePassCount ( getHumanMove gameState '()) passCount)
 						)
 						(T
 							(write-line "Its computer's turn!")
 							(terpri)
-							(playRound  ( getComputerMove gameState '()))
+							(updatePassCount  ( getComputerMove gameState '()) passCount)
 						) 
 					)
 				) 
@@ -178,6 +207,15 @@
 			
 		)
 	)
+)
+
+(DEFUN updatePassCount(gameState passCount)
+	( COND(
+		(null (getPlayerPassed gameState))
+		(playRound gameState '0)
+	)
+	(T 
+	(playRound gameState (+ passCount 1))) )
 )
 
 
@@ -283,12 +321,12 @@
 	(terpri)
 	(write-line "----------------------------------------------------------")
 	(terpri)
+	(write-line "Conputer's move: ")
 	( LET* (
 		(compMove (getHint (getLayout gameState) (getComputerHand gameState) (getPlayerPassed gameState) 'R ))
 	)
 	( COND(
 		(null compMove)
-		(write-line "Debug: Computer doesn't have any valid moves in hand")
 		( COND ( ;if the computer hasn't drawn
 			(null hasAlreadyDrawn)
 			( COND (
@@ -309,7 +347,7 @@
 				
 		)))
 		(T 
-			(reverse (CONS "Human" (rest ( reverse (updateComputerHand (updateLayout gameState (placeDomino compMove (getLayout gameState)) ) (remove (rest compMove) (getComputerHand gameState) :test #'equal)) ) )))						
+			(reverse (CONS "Human" (CONS '() (rest (rest ( reverse (updateComputerHand (updateLayout gameState (placeDomino compMove (getLayout gameState)) ) (remove (rest compMove) (getComputerHand gameState) :test #'equal)) ) )))	))				
 		)
 			
 	))
@@ -317,6 +355,7 @@
 
 
 (DEFUN getHumanMove(gameState hasAlreadyDrawn)
+	(displayRoundState gameState)
 	(terpri)
 	(write-line "----------------------------------------------------------")
 	(princ "Human Hand: ")
@@ -333,6 +372,11 @@
 			(write-line "Please input a number, not a list!")
 			(getHumanMove gameState hasAlreadyDrawn)
 		)
+		(
+			(symbolp choice)
+			(write-line "Please input a number, not a symbol!")
+			(getHumanMove gameState hasAlreadyDrawn)
+		) 
 		(
 			(= choice 1)
 			(playHuman gameState)
@@ -359,6 +403,7 @@
 		)
 		(
 			(= choice 3)
+			(write-line "Hint: ")
 			(LET* (
 					(gameHint (getHint (getLayout gameState) (getHumanHand gameState) (getPlayerPassed gameState) 'L) )
 				)
@@ -424,7 +469,6 @@
 								;checking for if chosen domino is in hand
 								(position (rest move ) hand :test #'equal)
 								(terpri)
-								(write-line "Debug:: You have the domino in hand!")
 								;need let on placedomino
 								( LET* (
 									(resultMove (validateMove move layout))
@@ -438,7 +482,7 @@
 									(T 
 										;update pass and turn
 										;implement pass concept
-									 	(reverse (CONS "Computer" (rest (reverse (updateHumanHand (updateLayout gameState (placeDomino resultMove layout) ) (remove (rest move) hand :test #'equal))))))
+									 	(reverse (CONS "Computer" (CONS '() (rest (rest (reverse (updateHumanHand (updateLayout gameState (placeDomino resultMove layout) ) (remove (rest move) hand :test #'equal))))))))
 									))
 								)
 							
@@ -512,21 +556,22 @@
 )
 
 (DEFUN placeDomino(move layout)
-	(write-line "Debug: Placing the domino!")
-	( COND (
-		(eq 'L (first move))
-		(write-line "Debug:: Placing on the left")
+	(LET* (
+		(adjustedMove (validateMove move layout))
+	)( COND (
+		(eq 'L (first adjustedMove))
 		(
 			;left stuff
-			CONS (first layout) (CONS (rest move) (rest layout))
+			CONS (first layout) (CONS (rest adjustedMove) (rest layout))
 		) )
 		(T 
 			(
 				;right stuff
-				reverse (CONS (first (reverse layout)) (CONS (rest move) (rest (reverse layout))))
+				reverse (CONS (first (reverse layout)) (CONS (rest adjustedMove) (rest (reverse layout))))
 			)
 		)
-	)
+	))
+	
 
 )
 
@@ -564,9 +609,6 @@
 )
 
 (DEFUN getHint(layout hand passed side)
-	(terpri)
-	(write-line "----------------------------------------------------------")
-	(write-line "Strategy:")
 	( LET*(
 		(sortedMoves (sort (getAllPossibleMoves layout hand passed side) #'compareDominos))
 		)
@@ -577,7 +619,11 @@
 		(
 			(NOT (eq (first (first sortedMoves)) 'A)) ;if it can only be placed on the side 
 			(terpri)
-			(format t "~S can be played on the ~A! ~%" (rest (first sortedMoves)) (getSideName side))
+			(format t "~S on the ~A! ~%" (rest (first sortedMoves)) (getSideName (first (first sortedMoves))))
+			(terpri)
+			(terpri)
+			(write-line "----------------------------------------------------------")
+			(write-line "Strategy:")
 			(format t "This move decreases the total sum in hand by  = ~D ~%" (+ (first (rest (first sortedMoves)) ) (first (last (first sortedMoves))) ) )
 			(first sortedMoves)
 		)
@@ -625,7 +671,7 @@
 				(getAllPossibleMoves layout (rest hand) passed side)	
 			)
 			(T 
-			(APPEND (LIST (CONS side (first hand)) ) (getAllPossibleMoves layout (rest hand) passed side))))
+			(CONS (CONS side (first hand)) (getAllPossibleMoves layout (rest hand) passed side))))
 			;condition check on player side
 		)
 		(T ;if passed or double
@@ -635,15 +681,15 @@
 				)
 				( COND (
 					(AND (NOT (null left) ) (NOT (null right) )) ;if it can be place on both sides 
-					(LIST (CONS 'A (first hand)) (getAllPossibleMoves layout (rest hand) passed side)) ; A means any
+					(CONS (CONS 'A (first hand)) (getAllPossibleMoves layout (rest hand) passed side)) ; A means any
 				)
 				(
 					(NOT (null left))
-					(LIST (CONS 'L (first hand)) (getAllPossibleMoves layout (rest hand) passed side))
+					(CONS (CONS 'L (first hand)) (getAllPossibleMoves layout (rest hand) passed side))
 				)
 				(
 					(NOT (null right))
-					(LIST (CONS 'R (first hand)) (getAllPossibleMoves layout (rest hand) passed side))
+					(CONS (CONS 'R (first hand)) (getAllPossibleMoves layout (rest hand) passed side))
 				)
 				( T 
 				(getAllPossibleMoves layout (rest hand) passed side) )
@@ -657,7 +703,8 @@
 )
 
 (DEFUN compareDominos ( a b)
-	( COND (
+	( COND 
+	(
 		(>= (+ (first (rest a) ) (first (last a)) ) (+ (first (rest b)) (first (last b)) ) )
 		T
 	)
@@ -669,7 +716,7 @@
 
 ( DEFUN getNextMoveScoresAfterPlacement (layout hand move passed side)
 	( LET* (
-		 (sortedMoves (sort (getAllPossibleMoves (placeDomino resultMove layout) (remove (rest move) hand :test #'equal) passed side) #'compareDominos) )
+		 (sortedMoves (sort (getAllPossibleMoves (placeDomino move layout) (remove (rest move) hand :test #'equal) passed side) #'compareDominos) )
 	)
 	(+ (first (rest (first sortedMoves)) ) (first (last (first sortedMoves))) )
 	)
@@ -861,4 +908,6 @@
 )
 
 (terpri)
+(trace playRound)
+(trace getAllPossibleMoves)
 (Longana)
