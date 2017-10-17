@@ -3,7 +3,7 @@
 	(terpri)
 	(write-line "Welcome to Lonagana!")
 	(terpri)
-	(write-line "Would you like to load a game? (Y for yes, anything else for no) ")
+	(write-line "Would you like to load a game? (Y/N) ")
 	(LET* (
 		(choice (read))
 	)
@@ -20,10 +20,15 @@
 	(
 		(eq choice 'Y )
 		(playTournament (loadFile) 0 0)
-		)
-		(T
-			(Tournament)
-		))
+	)
+	(
+		(eq choice 'N)
+		(Tournament)
+	)
+	(T
+		(write-line "Invalid choice!")
+		(Longana)
+	))
 	)
 )
 
@@ -901,7 +906,7 @@
 
 (DEFUN askToSave(gameState) 
 	(terpri)
-	(write-line "Would you like to save and quit? Y for yes, everything else for no.")
+	(write-line "Would you like to save and quit? (Y/N)")
 	(LET* (
 		(choice (read))
 	)
@@ -910,8 +915,13 @@
 			(serialize gameState)
 			T
 		)
-		(T
+		(
+			(eq choice 'N )
 			()
+		)
+		(T
+			(write-line "Invalid choice!")
+			(askToSave gameState)
 		))
 	)
 
@@ -971,5 +981,4 @@
 )
 
 (terpri)
-(trace determineFirstPlayer)
 (Longana)
